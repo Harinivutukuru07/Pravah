@@ -32,7 +32,7 @@ app.use(express.json());
 // =============================================
 // Health Check
 // =============================================
-app.get('/api/health', (_req, res) => {
+app.get(['/', '/health', '/api/health'], (_req, res) => {
   res.json({
     success: true,
     message: 'PRAVAH API is running.',
@@ -41,15 +41,15 @@ app.get('/api/health', (_req, res) => {
 });
 
 // =============================================
-// API Routes
+// API Routes (supported with or without /api prefix)
 // =============================================
-app.use('/api/auth', authRoutes);
-app.use('/api/customers', customerRoutes);
-app.use('/api/enquiries', enquiryRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/quotations', quotationRoutes);
-app.use('/api/sales-orders', salesOrderRoutes);
+app.use(['/api/auth', '/auth'], authRoutes);
+app.use(['/api/customers', '/customers'], customerRoutes);
+app.use(['/api/enquiries', '/enquiries'], enquiryRoutes);
+app.use(['/api/products', '/products'], productRoutes);
+app.use(['/api/inventory', '/inventory'], inventoryRoutes);
+app.use(['/api/quotations', '/quotations'], quotationRoutes);
+app.use(['/api/sales-orders', '/sales-orders'], salesOrderRoutes);
 
 // =============================================
 // 404 Handler
