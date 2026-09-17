@@ -1,0 +1,258 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// User Management
+// =============================================
+
+enum Role {
+  ADMIN
+  SALES_USER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  enquiries  Enquiry[]
+  quotations Quotation[]
+  salesOrders SalesOrder[]
+
+  @@map("users")
+}
+
+// =============================================
+// Customer Management
+// =============================================
+
+model Customer {
+  id            Int      @id @default(autoincrement())
+  companyName   String   @map("company_name")
+  contactPerson String   @map("contact_person")
+  mobile        String
+  email         String
+  city          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  enquiries   Enquiry[]
+  quotations  Quotation[]
+  salesOrders SalesOrder[]
+
+  @@map("customers")
+}
+
+// =============================================
+// Product Master
+// =============================================
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  productCode String   @unique @map("product_code")
+  productName String   @map("product_name")
+  category    String
+  unit        String
+  basePrice   Float    @map("base_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  inventory       Inventory?
+  enquiryItems    EnquiryItem[]
+  quotationItems  QuotationItem[]
+  salesOrderItems SalesOrderItem[]
+
+  @@map("products")
+}
+
+// =============================================
+// Inventory Management
+// =============================================
+
+model Inventory {
+  id               Int      @id @default(autoincrement())
+  productId        Int      @unique @map("product_id")
+  physicalQuantity Int      @default(0) @map("physical_quantity")
+  reservedQuantity Int      @default(0) @map("reserved_quantity")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("inventory")
+}
+
+// =============================================
+// Enquiry Management
+// =============================================
+
+enum EnquiryStatus {
+  NEW
+  QUOTED
+  WON
+  LOST
+}
+
+model Enquiry {
+  id            Int           @id @default(autoincrement())
+  enquiryNumber String        @unique @map("enquiry_number")
+  customerId    Int           @map("customer_id")
+  userId        Int           @map("user_id")
+  enquiryDate   DateTime      @map("enquiry_date")
+  requiredDate  DateTime?     @map("required_date")
+  notes         String?
+  status        EnquiryStatus @default(NEW)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  customer   Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      EnquiryItem[]
+  quotations Quotation[]
+
+  @@map("enquiries")
+}
+
+model EnquiryItem {
+  id        Int      @id @default(autoincrement())
+  enquiryId Int      @map("enquiry_id")
+  productId Int      @map("product_id")
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("enquiry_items")
+}
+
+// =============================================
+// Quotation Management
+// =============================================
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+model Quotation {
+  id              Int             @id @default(autoincrement())
+  quotationNumber String          @unique @map("quotation_number")
+  enquiryId       Int             @map("enquiry_id")
+  customerId      Int             @map("customer_id")
+  userId          Int             @map("user_id")
+  validUntil      DateTime        @map("valid_until")
+  grandTotal      Float           @default(0) @map("grand_total")
+  status          QuotationStatus @default(DRAFT)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  enquiry    Enquiry         @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  customer   Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      QuotationItem[]
+  salesOrder SalesOrder?
+
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id              Int      @id @default(autoincrement())
+  quotationId     Int      @map("quotation_id")
+  productId       Int      @map("product_id")
+  quantity        Int
+  unitPrice       Float    @map("unit_price")
+  discountPercent Float    @default(0) @map("discount_percent")
+  gstPercent      Float    @default(18) @map("gst_percent")
+  lineAmount      Float    @map("line_amount")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("quotation_items")
+}
+
+// =============================================
+// Sales Order Management
+// =============================================
+
+enum SalesOrderStatus {
+  PENDING
+  CONFIRMED
+  DISPATCHED
+  CANCELLED
+}
+
+model SalesOrder {
+  id          Int              @id @default(autoincrement())
+  orderNumber String           @unique @map("order_number")
+  quotationId Int              @unique @map("quotation_id")
+  customerId  Int              @map("customer_id")
+  userId      Int              @map("user_id")
+  orderDate   DateTime         @map("order_date")
+  totalAmount Float            @map("total_amount")
+  status      SalesOrderStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  quotation Quotation        @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  customer  Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     SalesOrderItem[]
+  dispatch  Dispatch?
+
+  @@map("sales_orders")
+}
+
+model SalesOrderItem {
+  id           Int      @id @default(autoincrement())
+  salesOrderId Int      @map("sales_order_id")
+  productId    Int      @map("product_id")
+  quantity     Int
+  unitPrice    Float    @map("unit_price")
+  lineAmount   Float    @map("line_amount")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("sales_order_items")
+}
+
+// =============================================
+// Dispatch Management
+// =============================================
+
+model Dispatch {
+  id             Int      @id @default(autoincrement())
+  dispatchNumber String   @unique @map("dispatch_number")
+  salesOrderId   Int      @unique @map("sales_order_id")
+  dispatchDate   DateTime @map("dispatch_date")
+  vehicleNumber  String   @map("vehicle_number")
+  driverName     String   @map("driver_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+
+  @@map("dispatches")
+}
